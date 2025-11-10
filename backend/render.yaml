@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: careerpath-ai-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: MONGO_URI
+        value: mongodb+srv://DhanushAS:Dhabha%402056@cluster0.rdw0jde.mongodb.net/careerpathai?retryWrites=true&w=majority
+      - key: JWT_SECRET
+        value: jwt_!@#secure_2025_key
+      - key: GEMINI_API_KEY
+        value: AIzaSyBV_8S_E0WpwfjzhM-WJrCDt4m5CIpfHnk
