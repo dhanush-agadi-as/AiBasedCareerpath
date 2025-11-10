@@ -1,22 +1,55 @@
-# dependencies
+# -----------------------------
+# Node & React common ignores
+# -----------------------------
 node_modules/
-package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# build output
-build/
-dist/
-
-# backup and cache
-backup/
+# Environment files (keep secrets safe)
 .env
-.vercel/
-.cache/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# system files
+# Build output
+/build
+/dist
+/.next
+/out
+
+# Vercel deployment folder
+.vercel/
+
+# Backup & temp folders
+backup/
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+*.log.*
+log.txt
+
+# System files
 .DS_Store
 Thumbs.db
 
-# IDE and OS-specific files
+# IDE specific
 .vscode/
 .idea/
-*.log
+
+# Coverage reports
+coverage/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Misc
+*.tgz
+*.zip
+*.tar.gz
