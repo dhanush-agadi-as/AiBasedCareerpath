@@ -16,24 +16,43 @@ import PageWrapper from "../components/PageWrapper";
 function Dashboard() {
   const [skills, setSkills] = useState([]);
   const [recommendations, setRecommendations] = useState(() => {
-    // ✅ Load saved data from localStorage on page load
     const saved = localStorage.getItem("recommendations");
     return saved ? JSON.parse(saved) : null;
   });
+  const [completedTopics, setCompletedTopics] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Fetch user's skills on load
+  const token = localStorage.getItem("token");
+  const API_BASE = "http://localhost:5000";
+
+  // ✅ Fetch user's skills + completed topics from DB
   useEffect(() => {
-    const token = localStorage.getItem("token");
     if (!token) return;
 
-    axios
-      .get("http://localhost:5000/api/skills", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setSkills(res.data.skills))
-      .catch((err) => console.error("Error fetching skills:", err));
-  }, []);
+    const fetchData = async () => {
+      try {
+        const [skillsRes, progressRes] = await Promise.all([
+          axios.get(`${API_BASE}/api/skills`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${API_BASE}/api/progress`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        setSkills(skillsRes.data.skills);
+
+        const completed = (progressRes.data || [])
+          .filter((p) => p.completed)
+          .map((p) => p.topic);
+        setCompletedTopics(completed);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+
+    fetchData();
+  }, [token]);
 
   // ✅ Skill level mapping
   const getLevelValue = (level) => {
@@ -54,18 +73,16 @@ function Dashboard() {
     value: getLevelValue(skill.level),
   }));
 
-  // ✅ Generate new AI recommendations
+  // ✅ Generate AI recommendations
   const handleGenerateRecommendations = async () => {
-    const token = localStorage.getItem("token");
     if (!token) return alert("Please login first!");
     setLoading(true);
 
     try {
-      const res = await axios.get("http://localhost:5000/api/recommendations", {
+      const res = await axios.get(`${API_BASE}/api/recommendations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // ✅ Save new data
       setRecommendations(res.data);
       localStorage.setItem("recommendations", JSON.stringify(res.data));
     } catch (error) {
@@ -76,11 +93,59 @@ function Dashboard() {
     }
   };
 
-  // ✅ Clear saved data manually
+  // ✅ Clear saved data
   const handleClearRecommendations = () => {
     localStorage.removeItem("recommendations");
     setRecommendations(null);
   };
+
+  // ✅ Mark topic as completed (Save to DB)
+  const handleMarkCompleted = async (topic) => {
+    if (completedTopics.includes(topic)) return;
+
+    try {
+      await axios.put(
+        `${API_BASE}/api/progress/${encodeURIComponent(topic)}`,
+        { completed: true },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const updated = [...completedTopics, topic];
+      setCompletedTopics(updated);
+    } catch (err) {
+      console.error("Error marking topic completed:", err);
+      alert("Failed to save progress to database.");
+    }
+  };
+
+  // ✅ Undo completed (Remove from DB)
+  const handleUndoCompleted = async (topic) => {
+    try {
+      await axios.put(
+        `${API_BASE}/api/progress/${encodeURIComponent(topic)}`,
+        { completed: false },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const updated = completedTopics.filter((t) => t !== topic);
+      setCompletedTopics(updated);
+    } catch (err) {
+      console.error("Error removing completed topic:", err);
+      alert("Failed to update progress in database.");
+    }
+  };
+
+  // ✅ Calculate progress %
+  const calculateProgress = () => {
+    if (!recommendations?.learning_path?.length) return 0;
+    const total = recommendations.learning_path.length;
+    const done = recommendations.learning_path.filter((item) =>
+      completedTopics.includes(item.topic)
+    ).length;
+    return Math.round((done / total) * 100);
+  };
+
+  const progressPercent = calculateProgress();
 
   return (
     <PageWrapper>
@@ -92,7 +157,9 @@ function Dashboard() {
           </h1>
 
           {skills.length === 0 ? (
-            <p className="text-center text-gray-500">No skills available to display.</p>
+            <p className="text-center text-gray-500">
+              No skills available to display.
+            </p>
           ) : (
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={chartData}>
@@ -106,6 +173,24 @@ function Dashboard() {
           )}
         </Card>
 
+        {/* 📈 Learning Progress Bar */}
+        {recommendations && (
+          <Card className="p-4 w-full max-w-3xl shadow-md bg-white dark:bg-gray-800">
+            <h2 className="text-lg font-semibold mb-2 text-blue-600">
+              Overall Learning Progress
+            </h2>
+            <div className="w-full bg-gray-200 h-5 rounded-full overflow-hidden">
+              <div
+                className="bg-green-500 h-5 transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              ></div>
+            </div>
+            <p className="mt-2 text-gray-600 text-center font-medium">
+              {progressPercent}% completed
+            </p>
+          </Card>
+        )}
+
         {/* 🧠 Generate / Clear Buttons */}
         <div className="flex gap-4">
           <Button
@@ -113,7 +198,9 @@ function Dashboard() {
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg"
           >
-            {loading ? "Generating Recommendations..." : "Generate Career Recommendations"}
+            {loading
+              ? "Generating Recommendations..."
+              : "Generate Career Recommendations"}
           </Button>
 
           {recommendations && (
@@ -147,43 +234,90 @@ function Dashboard() {
               {/* ✅ Learning Path */}
               <div>
                 <h3 className="font-bold text-lg text-blue-600">Learning Path:</h3>
-                {recommendations.learning_path?.map((path, i) => (
-                  <div key={i} className="mt-4 border-t pt-4">
-                    <h4 className="font-semibold text-blue-500">{path.topic}</h4>
-                    <p className="text-sm mb-2">{path.why_important}</p>
+                {recommendations.learning_path?.map((path, i) => {
+                  const isCompleted = completedTopics.includes(path.topic);
+                  return (
+                    <div
+                      key={i}
+                      className={`mt-4 border-t pt-4 rounded-lg p-4 ${
+                        isCompleted
+                          ? "bg-green-100 dark:bg-green-900"
+                          : "bg-gray-50 dark:bg-gray-700"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <h4
+                          className={`font-semibold ${
+                            isCompleted ? "text-green-600" : "text-blue-500"
+                          }`}
+                        >
+                          {path.topic}
+                        </h4>
 
-                    {/* 🎥 YouTube Videos */}
-                    <p className="font-semibold">🎥 YouTube Videos:</p>
-                    <ul className="list-disc list-inside mb-2">
-                      {path.videos?.length ? (
-                        path.videos.map((v, idx) => (
-                          <li key={idx}>
-                            <a
-                              href={v.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:underline"
-                            >
-                              {v.title}
-                            </a>
-                          </li>
-                        ))
-                      ) : (
-                        <li>No videos found</li>
-                      )}
-                    </ul>
+                        {isCompleted ? (
+                          <Button
+                            onClick={() => handleUndoCompleted(path.topic)}
+                            className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 text-sm"
+                          >
+                            Undo
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => handleMarkCompleted(path.topic)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-sm"
+                          >
+                            Mark as Completed
+                          </Button>
+                        )}
+                      </div>
 
-                    {/* 💻 Practice Questions */}
-                    <p className="font-semibold">💻 Practice Questions:</p>
-                    <ul className="list-disc list-inside">
-                      {path.practice_questions?.map((q, idx) => (
-                        <li key={idx}>{q}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+                      <p className="text-sm mb-2 mt-2">{path.why_important}</p>
+
+                      <p className="font-semibold">🎥 YouTube Videos:</p>
+                      <ul className="list-disc list-inside mb-2">
+                        {path.videos?.length ? (
+                          path.videos.map((v, idx) => (
+                            <li key={idx}>
+                              <a
+                                href={v.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:underline"
+                              >
+                                {v.title}
+                              </a>
+                            </li>
+                          ))
+                        ) : (
+                          <li>No videos found</li>
+                        )}
+                      </ul>
+
+                      <p className="font-semibold">💻 Practice Questions:</p>
+                      <ul className="list-disc list-inside">
+                        {path.practice_questions?.map((q, idx) => (
+                          <li key={idx}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+          </Card>
+        )}
+
+        {/* ✅ Completed Topics Section */}
+        {completedTopics.length > 0 && (
+          <Card className="p-6 w-full max-w-3xl mt-6 bg-green-50 dark:bg-gray-800 shadow-xl">
+            <h3 className="text-2xl font-semibold text-green-600 mb-4 text-center">
+              ✅ Completed Topics
+            </h3>
+            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300">
+              {completedTopics.map((topic, i) => (
+                <li key={i}>{topic}</li>
+              ))}
+            </ul>
           </Card>
         )}
       </div>

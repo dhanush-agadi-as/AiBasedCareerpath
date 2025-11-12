@@ -18,8 +18,6 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import ThemeToggle from "./components/ThemeToggle";
 import LearningPath from "./pages/LearningPath";
-import Resume from "./pages/Resume";
-import Progress from "./pages/Progress";
 import Goals from "./pages/Goals"; // ✅ Added Goals page
 
 // ================== Navbar Component ==================
@@ -50,8 +48,6 @@ function Navbar() {
           <>
             <Link to="/dashboard">Dashboard</Link>
             <Link to="/learning-path">Learning Path</Link>
-            <Link to="/resume">Resume</Link>
-            <Link to="/progress">Progress</Link>
             <Link to="/goals">Goals</Link> {/* ✅ Added Goals Link */}
           </>
         )}
@@ -96,8 +92,6 @@ function AnimatedRoutes() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/learning-path" element={<LearningPath />} />
-        <Route path="/resume" element={<Resume />} />
-        <Route path="/progress" element={<Progress />} />
         <Route path="/goals" element={<Goals />} /> {/* ✅ Correctly added here */}
       </Routes>
     </AnimatePresence>

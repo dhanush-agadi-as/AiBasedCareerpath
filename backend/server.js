@@ -50,6 +50,14 @@ const goalSchema = new mongoose.Schema({
 });
 const Goal = mongoose.model("Goal", goalSchema);
 
+// 📈 PROGRESS (NEW)
+const progressSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  topic: { type: String, required: true },
+  completed: { type: Boolean, default: false },
+});
+const Progress = mongoose.model("Progress", progressSchema);
+
 // ==================== AUTH CONFIG ====================
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
@@ -184,6 +192,68 @@ app.post("/api/goals", authMiddleware, async (req, res) => {
     res.status(201).json({ message: "Goal added successfully", goal });
   } catch (error) {
     res.status(500).json({ error: "Failed to add goal" });
+  }
+});
+
+// ==================== PROGRESS ROUTES ====================
+
+// 📤 Save topic progress
+app.post("/api/progress", authMiddleware, async (req, res) => {
+  try {
+    const { topic, completed } = req.body;
+    if (!topic) return res.status(400).json({ error: "Topic is required" });
+
+    let progress = await Progress.findOne({ userId: req.user.userId, topic });
+    if (progress) {
+      progress.completed = completed;
+      await progress.save();
+    } else {
+      progress = await Progress.create({
+        userId: req.user.userId,
+        topic,
+        completed,
+      });
+    }
+
+    res.json({ message: "Progress saved", progress });
+  } catch (error) {
+    console.error("❌ Progress Save Error:", error);
+    res.status(500).json({ error: "Failed to save progress" });
+  }
+});
+
+// 📥 Get user progress
+app.get("/api/progress", authMiddleware, async (req, res) => {
+  try {
+    const progress = await Progress.find({ userId: req.user.userId });
+    res.json(progress);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch progress" });
+  }
+});
+
+// ✅ NEW — Update topic progress (Mark as Read)
+app.put("/api/progress/:topic", authMiddleware, async (req, res) => {
+  try {
+    const { topic } = req.params;
+    const { completed } = req.body;
+
+    let progress = await Progress.findOne({ userId: req.user.userId, topic });
+    if (!progress) {
+      progress = await Progress.create({
+        userId: req.user.userId,
+        topic,
+        completed,
+      });
+    } else {
+      progress.completed = completed;
+      await progress.save();
+    }
+
+    res.json({ message: "Progress updated successfully", progress });
+  } catch (error) {
+    console.error("❌ Progress Update Error:", error);
+    res.status(500).json({ error: "Failed to update progress" });
   }
 });
 
