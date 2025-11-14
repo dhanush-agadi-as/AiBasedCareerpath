@@ -9,7 +9,7 @@ function ProgressPage() {
   const [progressItems, setProgressItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = "http://localhost:5000/api/progress";
+  const API_URL = `${process.env.REACT_APP_API_URL}/api/progress`;
 
   // ✅ Fetch progress from backend
   const fetchProgress = async () => {
