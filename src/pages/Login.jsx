@@ -19,7 +19,7 @@ function Login() {
     setError("");
 
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, formData);
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, formData);
       localStorage.setItem("token", res.data.token);
       alert("Login successful!");
       navigate("/dashboard"); // redirect to Home page
