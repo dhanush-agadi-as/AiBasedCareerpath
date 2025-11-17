@@ -14,7 +14,7 @@ function Signup() {
   const handleSignup = async () => {
     if (!username || !email || !password) return alert("All fields required!");
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, {
+      await axios.post("http://localhost:5000/api/auth/signup", {
         username,
         email,
         password,

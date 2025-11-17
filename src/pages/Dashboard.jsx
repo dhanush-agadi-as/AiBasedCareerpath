@@ -79,7 +79,7 @@ function Dashboard() {
     setLoading(true);
 
     try {
-      const res = await axios.get(`${API_BASE}/api/recommendations`, {
+      const res = await axios.get("http://localhost:5000/api/recommendations", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
