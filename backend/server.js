@@ -348,6 +348,65 @@ Return JSON only in this format:
   }
 });
 
+// ==================== CHATBOT ROUTE ====================
+app.post("/api/chat", authMiddleware, async (req, res) => {
+  try {
+    const { question } = req.body;
+
+    if (!question) {
+      return res.status(400).json({ error: "Question is required" });
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    const prompt = `
+You are an AI career guidance assistant.
+User question: "${question}"
+
+1. Provide a clear and helpful answer.
+2. If the question is about a skill, technology, career role, or learning topic, suggest 2–4 YouTube search keywords.
+3. Respond ONLY in JSON:
+
+{
+  "answer": "",
+  "youtube_queries": []
+}
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const text = response.output_text || response.text || "";
+    const clean = text.replace(/```json|```/g, "").trim();
+
+    let data;
+    try {
+      data = JSON.parse(clean);
+    } catch {
+      data = { answer: "Sorry, I couldn't understand that.", youtube_queries: [] };
+    }
+
+    // 🔍 Fetch YouTube videos for each query
+    let videos = [];
+    if (data.youtube_queries && data.youtube_queries.length > 0) {
+      const q = data.youtube_queries[0]; // use first query
+      videos = await fetchYouTubeVideos(q, 3);
+    }
+
+    return res.json({
+      answer: data.answer,
+      videos,
+    });
+
+  } catch (error) {
+    console.error("❌ Chatbot Error:", error);
+    res.status(500).json({ error: "Chatbot failed, try again." });
+  }
+});
+
+
 // ==================== START SERVER ====================
 app.listen(PORT, "0.0.0.0", () =>
   console.log(`🚀 Server running on port ${PORT}`)

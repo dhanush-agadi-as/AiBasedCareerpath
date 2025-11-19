@@ -19,6 +19,8 @@ import Dashboard from "./pages/Dashboard";
 import ThemeToggle from "./components/ThemeToggle";
 import LearningPath from "./pages/LearningPath";
 import Goals from "./pages/Goals"; // ✅ Added Goals page
+import ChatBot from "./pages/ChatBot";
+
 
 // ================== Navbar Component ==================
 function Navbar() {
@@ -49,6 +51,7 @@ function Navbar() {
             <Link to="/dashboard">Dashboard</Link>
             <Link to="/learning-path">Learning Path</Link>
             <Link to="/goals">Goals</Link> {/* ✅ Added Goals Link */}
+            <Link to="/chat">Chatbot</Link>
           </>
         )}
 
@@ -93,6 +96,7 @@ function AnimatedRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/learning-path" element={<LearningPath />} />
         <Route path="/goals" element={<Goals />} /> {/* ✅ Correctly added here */}
+        <Route path="/chat" element={<ChatBot />} />
       </Routes>
     </AnimatePresence>
   );
